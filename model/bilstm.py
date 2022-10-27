@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from data_preprocess import load_imdb
 from torch.utils.data import DataLoader
+from utils import set_seed
 
 
 class BiLSTM(nn.Module):
@@ -26,6 +27,8 @@ class BiLSTM(nn.Module):
                 nn.init.xavier_uniform_(p)
 
 
+set_seed()
+
 BATCH_SIZE = 512
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 50
@@ -35,12 +38,12 @@ train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=BATCH_SIZE)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = BiLSTM(vocab_size=len(vocab), embed_size=512, hidden_size=512, num_layers=2).to(device)
+model = BiLSTM(vocab_size=len(vocab), embed_size=128, hidden_size=256, num_layers=2).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 for epoch in range(1, NUM_EPOCHS + 1):
-    print(f'Epoch {epoch}\n' + '-' * 50)
+    print(f'Epoch {epoch}\n' + '-' * 32)
     avg_train_loss = 0
     for batch_idx, (X, y) in enumerate(train_loader):
         X, y = X.to(device), y.to(device)
@@ -55,7 +58,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
         if (batch_idx + 1) % 5 == 0:
             print(f"[{(batch_idx + 1) * BATCH_SIZE:>5}/{len(train_loader.dataset):>5}] train loss: {loss:.4f}")
 
-    print(f"avg train loss:{avg_train_loss:.4f}\n")
+    print(f"Avg train loss: {avg_train_loss:.4f}\n")
 
 acc = 0
 for X, y in test_loader:
