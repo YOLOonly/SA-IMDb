@@ -1,6 +1,6 @@
 import os
 import torch
-import random
+
 from torchtext.data import get_tokenizer
 from torchtext.vocab import build_vocab_from_iterator
 from torchtext import transforms as T
@@ -19,9 +19,7 @@ def read_imdb(path='./aclImdb', is_train=True):
     return reviews, labels
 
 
-def build_dataset(reviews, labels, max_len=512):
-    vocab = build_vocab_from_iterator(reviews, min_freq=2, specials=['<pad>', '<unk>'])
-    vocab.set_default_index(vocab['<unk>'])
+def build_dataset(reviews, labels, vocab, max_len=512):
     text_transform = T.Sequential(
         T.VocabTransform(vocab=vocab),
         T.Truncate(max_seq_len=max_len),
@@ -29,8 +27,14 @@ def build_dataset(reviews, labels, max_len=512):
         T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
     )
     dataset = TensorDataset(text_transform(reviews), torch.tensor(labels))
-    return dataset, vocab
+    return dataset
 
 
-reviews, labels = read_imdb()
-print(sum(list(map(lambda x: len(x), reviews))) / len(reviews))
+def load_imdb():
+    reviews_train, labels_train = read_imdb(is_train=True)
+    reviews_test, labels_test = read_imdb(is_train=False)
+    vocab = build_vocab_from_iterator(reviews_train, min_freq=3, specials=['<pad>', '<unk>', '<cls>', '<sep>'])
+    vocab.set_default_index(vocab['<unk>'])
+    train_data = build_dataset(reviews_train, labels_train, vocab)
+    test_data = build_dataset(reviews_test, labels_test, vocab)
+    return train_data, test_data, vocab
