@@ -22,5 +22,5 @@ nohup python -um model.bilstm > ./train.log 2>&1 &
 
 |      model      | Accuracy |
 | :-------------: | :------: |
-|     BiLSTM      |  0.7836  |
-| BiLSTM w/ GloVe |          |
+|     BiLSTM      |  0.7911  |
+| BiLSTM w/ GloVe |  0.8761  |

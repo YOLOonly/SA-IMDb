@@ -18,7 +18,9 @@ class BiLSTM(nn.Module):
 
         if use_glove:
             glove = GloVe(name="6B", dim=100)
-            self.embedding.from_pretrained(glove.get_vecs_by_tokens(vocab.get_itos()), padding_idx=vocab['<pad>'], freeze=True)
+            self.embedding = nn.Embedding.from_pretrained(glove.get_vecs_by_tokens(vocab.get_itos()),
+                                                          padding_idx=vocab['<pad>'],
+                                                          freeze=True)
 
     def forward(self, x):
         x = self.embedding(x).transpose(0, 1)
