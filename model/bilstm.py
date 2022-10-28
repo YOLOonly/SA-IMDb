@@ -11,14 +11,14 @@ class BiLSTM(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.rnn = nn.LSTM(embed_size, hidden_size, num_layers=num_layers, bidirectional=True, dropout=dropout)
-        self.fc = nn.Linear(4 * hidden_size, 2)
+        self.fc = nn.Linear(2 * hidden_size, 2)
 
         self._reset_parameters()
 
     def forward(self, x):
-        x = self.embedding(x).transpose(0, 1)  # (seq_len, batch_size, embed_size)
-        output, (_, _) = self.rnn(x)  # output shape: (seq_len, batch_size, 2 * hidden_size)
-        output = self.fc(torch.cat((output[0], output[-1]), dim=-1))  # output shape: (batch_size, 2)
+        x = self.embedding(x).transpose(0, 1)
+        _, (h_n, _) = self.rnn(x)
+        output = self.fc(torch.cat((h_n[-1], h_n[-2]), dim=-1))
         return output
 
     def _reset_parameters(self):
