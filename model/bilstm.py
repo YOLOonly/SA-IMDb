@@ -4,16 +4,21 @@ import torch.nn as nn
 from data_preprocess import load_imdb
 from torch.utils.data import DataLoader
 from utils import set_seed
+from torchtext.vocab import GloVe
 
 
 class BiLSTM(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size, num_layers=2, dropout=0.1):
+    def __init__(self, vocab, embed_size=100, hidden_size=256, num_layers=2, dropout=0.1, use_glove=False):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.embedding = nn.Embedding(len(vocab), embed_size, padding_idx=vocab['<pad>'])
         self.rnn = nn.LSTM(embed_size, hidden_size, num_layers=num_layers, bidirectional=True, dropout=dropout)
         self.fc = nn.Linear(2 * hidden_size, 2)
 
         self._reset_parameters()
+
+        if use_glove:
+            glove = GloVe(name="6B", dim=100)
+            self.embedding.from_pretrained(glove.get_vecs_by_tokens(vocab.get_itos()), padding_idx=vocab['<pad>'], freeze=True)
 
     def forward(self, x):
         x = self.embedding(x).transpose(0, 1)
@@ -38,7 +43,7 @@ train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=BATCH_SIZE)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = BiLSTM(vocab_size=len(vocab), embed_size=128, hidden_size=256).to(device)
+model = BiLSTM(vocab).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 

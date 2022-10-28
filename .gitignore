@@ -131,3 +131,4 @@ dmypy.json
 # Others
 **/.DS_Store
 aclImdb/
+.vector_cache/

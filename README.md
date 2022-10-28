@@ -3,10 +3,9 @@ Sentiment analysis on IMDB dataset.
 
 
 ## Usage
-Because the dataset contains too many files, the method of compressing and uploading is adopted.
+Because the dataset contains too many files, it is compressed here.
 
-
-Before you start, you need to unzip the dataset
+Unzip the dataset before starting
 
 ```bash
 unzip aclImdb.zip
@@ -21,6 +20,7 @@ nohup python -um model.bilstm > ./train.log 2>&1 &
 ## Performance
 
 
-|model | Accuracy |
-| :-: | :-: |
-|bilstm| 0.7836|
+|      model      | Accuracy |
+| :-------------: | :------: |
+|     BiLSTM      |  0.7836  |
+| BiLSTM w/ GloVe |          |

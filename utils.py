@@ -3,7 +3,7 @@ import random
 import torch
 
 
-def set_seed(seed=0):
+def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
