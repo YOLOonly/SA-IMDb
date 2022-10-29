@@ -8,7 +8,7 @@ from torchtext.vocab import GloVe
 
 
 class TextCNN(nn.Module):
-    def __init__(self, vocab, embed_size=100, kernel_sizes=[3, 4, 5], num_channels=[100, 100, 100]):
+    def __init__(self, vocab, embed_size=100, kernel_sizes=[2, 2, 3, 3, 4, 4], num_channels=[100] * 6):
         super().__init__()
         self.glove = GloVe(name="6B", dim=100)
         self.embedding = nn.Embedding.from_pretrained(self.glove.get_vecs_by_tokens(vocab.get_itos()), padding_idx=vocab['<pad>'])
@@ -30,7 +30,7 @@ class TextCNN(nn.Module):
     def forward(self, x):
         x = torch.cat((self.embedding(x), self.constant_embedding(x)), dim=-1)  # (batch_size, seq_len, 2 * embed_size)
         x = x.transpose(1, 2)  # (batch_size, 2 * embed_size, seq_len)
-        x = torch.cat([self.relu(self.pool(conv(x))).squeeze() for conv in self.convs], dim=-1)  # (batch_size, sum(num_channels))
+        x = torch.cat([self.pool(self.relu(conv(x))).squeeze() for conv in self.convs], dim=-1)  # (batch_size, sum(num_channels))
         x = self.fc(self.dropout(x))
         return x
 
