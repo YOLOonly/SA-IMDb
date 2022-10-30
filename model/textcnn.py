@@ -8,31 +8,37 @@ from torchtext.vocab import GloVe
 
 
 class TextCNN(nn.Module):
-    def __init__(self, vocab, embed_size=100, kernel_sizes=[2, 2, 3, 3, 4, 4], num_channels=[100] * 6):
+    def __init__(self, vocab, embed_size=100, kernel_sizes=[3, 4, 5], num_channels=[100] * 3):
         super().__init__()
         self.glove = GloVe(name="6B", dim=100)
-        self.embedding = nn.Embedding.from_pretrained(self.glove.get_vecs_by_tokens(vocab.get_itos()), padding_idx=vocab['<pad>'])
-        self.constant_embedding = nn.Embedding.from_pretrained(self.glove.get_vecs_by_tokens(vocab.get_itos()),
-                                                               padding_idx=vocab['<pad>'],
-                                                               freeze=True)
+        self.unfrozen_embedding = nn.Embedding.from_pretrained(self.glove.get_vecs_by_tokens(vocab.get_itos()), padding_idx=vocab['<pad>'])
+        self.frozen_embedding = nn.Embedding.from_pretrained(self.glove.get_vecs_by_tokens(vocab.get_itos()),
+                                                             padding_idx=vocab['<pad>'],
+                                                             freeze=True)
 
-        self.convs = nn.ModuleList()
+        self.convs_for_unfrozen = nn.ModuleList()
+        self.convs_for_frozen = nn.ModuleList()
         for out_channels, kernel_size in zip(num_channels, kernel_sizes):
-            self.convs.append(nn.Conv1d(in_channels=2 * embed_size, out_channels=out_channels, kernel_size=kernel_size))
+            self.convs_for_unfrozen.append(nn.Conv1d(in_channels=embed_size, out_channels=out_channels, kernel_size=kernel_size))
+            self.convs_for_frozen.append(nn.Conv1d(in_channels=embed_size, out_channels=out_channels, kernel_size=kernel_size))
 
         self.pool = nn.AdaptiveMaxPool1d(1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
-        self.fc = nn.Linear(sum(num_channels), 2)
+        self.fc = nn.Linear(sum(num_channels) * 2, 2)
 
         self.apply(self._init_weights)
 
     def forward(self, x):
-        x = torch.cat((self.embedding(x), self.constant_embedding(x)), dim=-1)  # (batch_size, seq_len, 2 * embed_size)
-        x = x.transpose(1, 2)  # (batch_size, 2 * embed_size, seq_len)
-        x = torch.cat([self.pool(self.relu(conv(x))).squeeze() for conv in self.convs], dim=-1)  # (batch_size, sum(num_channels))
-        x = self.fc(self.dropout(x))
-        return x
+        x_unfrozen = self.unfrozen_embedding(x).transpose(1, 2)  # (batch_size, embed_size, seq_len)
+        x_frozen = self.frozen_embedding(x).transpose(1, 2)  # (batch_size, embed_size, seq_len)
+        pooled_vector_for_unfrozen = [self.pool(self.relu(conv(x_unfrozen))).squeeze()
+                                      for conv in self.convs_for_unfrozen]  # shape of each element: (batch_size, 100)
+        pooled_vector_for_frozen = [self.pool(self.relu(conv(x_frozen))).squeeze()
+                                    for conv in self.convs_for_frozen]  # shape of each element: (batch_size, 100)
+        feature_vector = torch.cat(pooled_vector_for_unfrozen + pooled_vector_for_frozen, dim=-1)  # (batch_size, 600)
+        output = self.fc(self.dropout(feature_vector))  # (batch_size, 2)
+        return output
 
     def _init_weights(self, m):
         if type(m) in (nn.Linear, nn.Conv1d):
@@ -42,8 +48,8 @@ class TextCNN(nn.Module):
 set_seed()
 
 BATCH_SIZE = 512
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 35
+LEARNING_RATE = 0.0009
+NUM_EPOCHS = 60
 
 train_data, test_data, vocab = load_imdb()
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
