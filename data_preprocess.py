@@ -19,22 +19,32 @@ def read_imdb(path='./aclImdb', is_train=True):
     return reviews, labels
 
 
-def build_dataset(reviews, labels, vocab, max_len=512):
-    text_transform = T.Sequential(
-        T.VocabTransform(vocab=vocab),
-        T.Truncate(max_seq_len=max_len),
-        T.ToTensor(padding_value=vocab['<pad>']),
-        T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
-    )
+def build_dataset(reviews, labels, vocab, max_len=512, bert_preprocess=False):
+    if bert_preprocess:
+        text_transform = T.Sequential(
+            T.VocabTransform(vocab=vocab),
+            T.Truncate(max_seq_len=max_len - 2),
+            T.AddToken(token=vocab['<cls>'], begin=True),
+            T.AddToken(token=vocab['<sep>'], begin=False),
+            T.ToTensor(padding_value=vocab['<pad>']),
+            T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
+        )
+    else:
+        text_transform = T.Sequential(
+            T.VocabTransform(vocab=vocab),
+            T.Truncate(max_seq_len=max_len),
+            T.ToTensor(padding_value=vocab['<pad>']),
+            T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
+        )
     dataset = TensorDataset(text_transform(reviews), torch.tensor(labels))
     return dataset
 
 
-def load_imdb():
+def load_imdb(bert_preprocess=False):
     reviews_train, labels_train = read_imdb(is_train=True)
     reviews_test, labels_test = read_imdb(is_train=False)
     vocab = build_vocab_from_iterator(reviews_train, min_freq=3, specials=['<pad>', '<unk>', '<cls>', '<sep>'])
     vocab.set_default_index(vocab['<unk>'])
-    train_data = build_dataset(reviews_train, labels_train, vocab)
-    test_data = build_dataset(reviews_test, labels_test, vocab)
+    train_data = build_dataset(reviews_train, labels_train, vocab, bert_preprocess=bert_preprocess)
+    test_data = build_dataset(reviews_test, labels_test, vocab, bert_preprocess=bert_preprocess)
     return train_data, test_data, vocab

@@ -1,43 +1,17 @@
 import torch
 import torch.nn as nn
 
-from torch.utils.data import DataLoader, TensorDataset
-from torchtext.vocab import build_vocab_from_iterator
-from torchtext import transforms as T
-
 from utils import set_seed
+from torch.utils.data import DataLoader
 from transformers import BertConfig, BertForSequenceClassification
-from data_preprocess import read_imdb
-
-
-def build_dataset(reviews, labels, vocab, max_len=512):
-    text_transform = T.Sequential(
-        T.VocabTransform(vocab=vocab),
-        T.Truncate(max_seq_len=max_len - 2),
-        T.AddToken(token=vocab['<cls>'], begin=True),
-        T.AddToken(token=vocab['<sep>'], begin=False),
-        T.ToTensor(padding_value=vocab['<pad>']),
-        T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
-    )
-    dataset = TensorDataset(text_transform(reviews), torch.tensor(labels))
-    return dataset
-
-
-def load_imdb():
-    reviews_train, labels_train = read_imdb(is_train=True)
-    reviews_test, labels_test = read_imdb(is_train=False)
-    vocab = build_vocab_from_iterator(reviews_train, min_freq=3, specials=['<pad>', '<unk>', '<cls>', '<sep>'])
-    vocab.set_default_index(vocab['<unk>'])
-    train_data = build_dataset(reviews_train, labels_train, vocab)
-    test_data = build_dataset(reviews_test, labels_test, vocab)
-    return train_data, test_data, vocab
+from data_preprocess import load_imdb
 
 
 class BERT(nn.Module):
     def __init__(self, vocab):
         super().__init__()
         self.vocab = vocab
-        self.config = BertConfig()
+        self.config = BertConfig.from_pretrained('./config.json')
         self.config.vocab_size = len(self.vocab)
 
         self.bert = BertForSequenceClassification(config=self.config)
@@ -54,7 +28,7 @@ BATCH_SIZE = 256
 LEARNING_RATE = 0.0001
 NUM_EPOCHS = 40
 
-train_data, test_data, vocab = load_imdb()
+train_data, test_data, vocab = load_imdb(bert_preprocess=True)
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=BATCH_SIZE)
 
