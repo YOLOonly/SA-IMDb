@@ -1,37 +1,51 @@
 import torch
 import torch.nn as nn
 
-from transformers import BertConfig, BertForSequenceClassification
-from data_preprocess import load_imdb
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
+from torchtext.vocab import build_vocab_from_iterator
+from torchtext import transforms as T
+
 from utils import set_seed
+from transformers import BertConfig, BertForSequenceClassification
+from data_preprocess import read_imdb
+
+
+def build_dataset(reviews, labels, vocab, max_len=512):
+    text_transform = T.Sequential(
+        T.VocabTransform(vocab=vocab),
+        T.Truncate(max_seq_len=max_len - 2),
+        T.AddToken(token=vocab['<cls>'], begin=True),
+        T.AddToken(token=vocab['<sep>'], begin=False),
+        T.ToTensor(padding_value=vocab['<pad>']),
+        T.PadTransform(max_length=max_len, pad_value=vocab['<pad>']),
+    )
+    dataset = TensorDataset(text_transform(reviews), torch.tensor(labels))
+    return dataset
+
+
+def load_imdb():
+    reviews_train, labels_train = read_imdb(is_train=True)
+    reviews_test, labels_test = read_imdb(is_train=False)
+    vocab = build_vocab_from_iterator(reviews_train, min_freq=3, specials=['<pad>', '<unk>', '<cls>', '<sep>'])
+    vocab.set_default_index(vocab['<unk>'])
+    train_data = build_dataset(reviews_train, labels_train, vocab)
+    test_data = build_dataset(reviews_test, labels_test, vocab)
+    return train_data, test_data, vocab
 
 
 class BERT(nn.Module):
     def __init__(self, vocab):
         super().__init__()
         self.vocab = vocab
-
         self.config = BertConfig()
-        self.config.max_position_embeddings = 514  # <cls> + 512 + <sep>
         self.config.vocab_size = len(self.vocab)
 
         self.bert = BertForSequenceClassification(config=self.config)
-        self._reset_parameters()
 
-    def forward(self, x):
-        bs = x.size(0)
-        cls_column = torch.tensor([self.vocab['<cls>']] * bs).reshape(-1, 1).to(x.device)
-        sep_column = torch.tensor([self.vocab['<sep>']] * bs).reshape(-1, 1).to(x.device)
-        input_ids = torch.cat((cls_column, x, sep_column), dim=-1)
+    def forward(self, input_ids):
         attention_mask = (input_ids != self.vocab['<pad>']).long().float()
         logits = self.bert(input_ids=input_ids, attention_mask=attention_mask).logits
         return logits
-
-    def _reset_parameters(self):
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
 
 
 set_seed()
