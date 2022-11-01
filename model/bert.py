@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from utils import set_seed
 from torch.utils.data import DataLoader
-from transformers import BertConfig, BertForSequenceClassification
+from transformers import BertConfig, BertForSequenceClassification, get_scheduler
 from data_preprocess import load_imdb
 
 
@@ -11,7 +11,7 @@ class BERT(nn.Module):
     def __init__(self, vocab):
         super().__init__()
         self.vocab = vocab
-        self.config = BertConfig.from_pretrained("bert-base-uncased")
+        self.config = BertConfig()
         self.config.vocab_size = len(self.vocab)
         self.bert = BertForSequenceClassification(config=self.config)
 
@@ -25,7 +25,7 @@ set_seed(42)
 
 BATCH_SIZE = 256
 LEARNING_RATE = 1e-4
-NUM_EPOCHS = 1
+NUM_EPOCHS = 40
 
 train_data, test_data, vocab = load_imdb(bert_preprocess=True)
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
@@ -35,6 +35,7 @@ devices = [f'cuda:{i}' for i in range(torch.cuda.device_count())]
 model = nn.DataParallel(BERT(vocab), device_ids=devices).to(devices[0])
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-9, weight_decay=0.01)
+scheduler = get_scheduler(name="linear", optimizer=optimizer, num_warmup_steps=1000, num_training_steps=10000)
 
 for epoch in range(1, NUM_EPOCHS + 1):
     print(f'Epoch {epoch}\n' + '-' * 32)
@@ -48,6 +49,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         if (batch_idx + 1) % 10 == 0:
             print(f"[{(batch_idx + 1) * BATCH_SIZE:>5}/{len(train_loader.dataset):>5}] train loss: {loss:.4f}")

@@ -25,4 +25,4 @@ nohup python -um model.bilstm > ./train.log 2>&1 &
 |     BiLSTM      |  0.7911  |
 | BiLSTM w/ GloVe |  0.8761  |
 |     TextCNN     |  0.8698  |
-|      BERT       |   ...    |
+|      BERT       |  0.8532  |
