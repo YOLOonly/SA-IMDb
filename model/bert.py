@@ -11,9 +11,8 @@ class BERT(nn.Module):
     def __init__(self, vocab):
         super().__init__()
         self.vocab = vocab
-        self.config = BertConfig.from_pretrained('./config.json')
+        self.config = BertConfig.from_pretrained("bert-base-uncased")
         self.config.vocab_size = len(self.vocab)
-
         self.bert = BertForSequenceClassification(config=self.config)
 
     def forward(self, input_ids):
@@ -22,20 +21,20 @@ class BERT(nn.Module):
         return logits
 
 
-set_seed()
+set_seed(42)
 
 BATCH_SIZE = 256
-LEARNING_RATE = 0.0001
-NUM_EPOCHS = 40
+LEARNING_RATE = 1e-4
+NUM_EPOCHS = 1
 
 train_data, test_data, vocab = load_imdb(bert_preprocess=True)
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=BATCH_SIZE)
 
-devices = [f'cuda:{i}' for i in range(4)]
+devices = [f'cuda:{i}' for i in range(torch.cuda.device_count())]
 model = nn.DataParallel(BERT(vocab), device_ids=devices).to(devices[0])
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9)
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-9, weight_decay=0.01)
 
 for epoch in range(1, NUM_EPOCHS + 1):
     print(f'Epoch {epoch}\n' + '-' * 32)
