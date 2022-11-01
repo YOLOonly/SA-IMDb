@@ -20,9 +20,10 @@ nohup python -um model.bilstm > ./train.log 2>&1 &
 ## Performance
 
 
-|      model      | Accuracy |
-| :-------------: | :------: |
-|     BiLSTM      |  0.7911  |
-| BiLSTM w/ GloVe |  0.8761  |
-|     TextCNN     |  0.8698  |
-|      BERT       |  0.8532  |
+|           model            | Accuracy |
+| :------------------------: | :------: |
+|           BiLSTM           |  0.7911  |
+|      BiLSTM w/ GloVe       |  0.8761  |
+|          TextCNN           |  0.8698  |
+|            BERT            |  0.8532  |
+| BERT w/ Pretrained weights |  0.9327  |
